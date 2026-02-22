@@ -1,5 +1,11 @@
 import requests
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
+username = os.getenv("USERNAME")
+password = os.getenv("PASSWORD")
+app_key = os.getenv("APP_KEY")
 
 def getMatch():
     # stub for now
@@ -20,7 +26,7 @@ def getToken():
         "Content-Type": "application/x-www-form-urlencoded",
     }
 
-    body = {"username": "lucas.peiyangj@gmail.com", "password": "cycsu4-wetzug-xodzeF"}
+    body = {"username": f"{username}", "password": f"{password}"}
 
     response = requests.post(url, headers=headers, data=body)
 
@@ -39,8 +45,6 @@ def getToken():
 
 def listEventTypes():
     session_token = getToken()
-    app_key = "5fLJufLlOuWDWpM7"
-
     url = "https://api.betfair.com/exchange/betting/json-rpc/v1"
 
     headers = {
@@ -63,7 +67,6 @@ def listEventTypes():
 
 def listMarketCatalogue():
     session = getToken()
-    app_key = "5fLJufLlOuWDWpM7"
 
     url = "https://api.betfair.com/exchange/betting/json-rpc/v1"
 
