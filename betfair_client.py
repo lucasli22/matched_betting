@@ -96,8 +96,7 @@ def listMarketCatalogue():
 def normalise(name):
     return name.lower().replace("fc", "").replace(".", "").strip()
 
-def findMarket(catalogue):
-    match = getMatch()
+def findMarket(match, catalogue):
     home = match["home"]
     away = match["away"]
     matchStartTime = match["startTime"]
@@ -112,9 +111,27 @@ def findMarket(catalogue):
             return market
     return None
 
+def getSelectionId(market, teamToLay):
+    runners = market["runners"]
+    for runner in runners:
+        if normalise(runner["runnerName"]) == normalise(teamToLay):
+            return runner["selectionId"]
+    return None
 
-catalogue = listMarketCatalogue()
-market = findMarket(catalogue)
 eventTypes = listEventTypes()
+match = getMatch()
+catalogue = listMarketCatalogue()
+market = findMarket(match, catalogue)
+if market:
+    teamToLay = match["home"]
+    selectionId = getSelectionId(market, teamToLay)
+    if selectionId:
+        print(f"Safe to lay {teamToLay}!")
+        print(f"Market id: {market["marketId"]}")
+        print(f"Selection id: {selectionId}")
+    else:
+        print(f"Could not find {teamToLay} in Betfair :(")
+else:
+    print("No matching market found for this match :(")
 
-findMarket(catalogue)
+
