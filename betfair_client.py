@@ -1,5 +1,7 @@
 import requests
 import os
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -7,12 +9,16 @@ username = os.getenv("USERNAME")
 password = os.getenv("PASSWORD")
 app_key = os.getenv("APP_KEY")
 
-def getMatch():
+
+def getMatch(time):
     # stub for now
+    auTime = time.replace(tzinfo=ZoneInfo("Australia/Sydney"))
+    utcTime = auTime.astimezone(ZoneInfo("UTC"))
+    isoString = utcTime.isoformat()
     result = {
-        "home": "Central Coast Mariners",
-        "away": "Western Sydney Wanderers",
-        "startTime": "2026-02-22T06:00:00.000Z",
+        "home": "Liverpool",
+        "away": "West Ham",
+        "startTime": isoString,
     }
     return result
 
@@ -82,21 +88,23 @@ def listMarketCatalogue():
         "params": {
             "filter": {
                 "eventTypeIds": ["1"],
-                "marketCountries": ["AU"],
+                "marketCountries": ["GB"],
                 "marketTypeCodes": ["MATCH_ODDS"],
-                "marketStartTime": {"from": "2026-02-22T00:00:00Z"},
+                "marketStartTime": {"from": "2026-02-28T00:00:00Z"},
             },
             "maxResults": "20",
             "marketProjection": ["EVENT", "RUNNER_DESCRIPTION", "MARKET_START_TIME"],
         },
         "id": 1,
     }
-
     response = requests.post(url, headers=headers, json=body)
     return response.json()["result"]
 
 def normalise(name):
     return name.lower().replace("fc", "").replace(".", "").strip()
+
+def parse_betfair_time(timeStr):
+    return datetime.fromisoformat(timeStr.replace("Z", "+00:00"))
 
 def findMarket(match, catalogue):
     home = match["home"]
@@ -104,7 +112,12 @@ def findMarket(match, catalogue):
     matchStartTime = match["startTime"]
     for market in catalogue:
         marketStartTime = market["marketStartTime"]
-        if matchStartTime != marketStartTime:
+        delta = abs(
+        parse_betfair_time(matchStartTime) -
+        parse_betfair_time(marketStartTime)
+        )   
+
+        if delta.total_seconds() > 60:
             continue
         runners = market["runners"]
         runnerNames = [normalise(runner["runnerName"]) for runner in runners]
@@ -151,8 +164,10 @@ def listMarketBook(marketId, selectionId):
                 return runner["ex"]["availableToLay"][0]["price"]
     return None    
 
+
 eventTypes = listEventTypes()
-match = getMatch()
+startTime = datetime(year=2026, month=3, day=1, hour=2, minute=0)
+match = getMatch(startTime)
 catalogue = listMarketCatalogue()
 market = findMarket(match, catalogue)
 if market:
