@@ -1,10 +1,15 @@
 from playwright.sync_api import sync_playwright, Playwright
 from rich import print
 
+def normalise(name):
+    return name.lower().replace("fc", "").replace(".", "").strip()
+
 def run(playwright):
     start_url = "https://www.sportsbet.com.au/betting/soccer"
+    team = "Newcastle"
+    away = "Barcelona"
     chrome = playwright.chromium
-    browser = chrome.launch(headless=False)
+    browser = chrome.launch()
     page = browser.new_page()
     page.goto(start_url)
 
@@ -12,7 +17,6 @@ def run(playwright):
     page.wait_for_selector('div[data-automation-id$="-competition-event-card"]')
 
     # Locate all event cards. The $= means "ends with"
-    # This targets elements like data-automation-id="10151698-competition-event-card"
     event_cards = page.locator('div[data-automation-id$="-competition-event-card"]')
     
     # Get the count to iterate over them safely
@@ -22,16 +26,33 @@ def run(playwright):
     for i in range(count):
         card = event_cards.nth(i)
         # Find the <a> tag within this specific card to get the link
-        link_element = card.locator('a')
+        link_element = card.locator('a').first
         
         if link_element.count() > 0:
             href = link_element.get_attribute('href')
-            print(f"Match Link: {href}")
-
-    # browser.close() # Don't forget to close the browser eventually
+        else:
+            href = "N/A"
+        # print(f"Match Link: {href}")
+        names = card.locator('[data-automation-id$="-three-outcome-captioned-label"]')
+        odds = card.locator('[data-automation-id$="-three-outcome-captioned-text"]')
+        if names.count() == 0 or odds.count() == 0:
+            continue
+        name_count = names.count()
+        game = {}
+        for j in range(name_count):
+            name = names.nth(j).inner_text()
+            if j < odds.count():
+                price = odds.nth(j).inner_text()
+            else:
+                price = "N/A"
+            game[normalise(name)] = price
+            
+        if normalise(team) in game and normalise(away) in game:
+            for x, y in game.items():
+                print(f"Name: {x}\nPrice: {y}\n")
+        else:
+            game.clear()
 
 
 with sync_playwright() as playwright:
     run(playwright)
-
-#data-automation-id="1165208673-three-outcome-captioned-text"
