@@ -20,7 +20,7 @@ BETFAIR_APP_KEY = "5fLJufLlOuWDWpM7"
 # ---------------------------------------------------------------------------
 
 # Log in to Betfair and return a session token.
-def get_token():
+def get_token() -> str:
     headers = {
         "Accept": "application/json",
         "X-Application": BETFAIR_APP_KEY,
@@ -44,7 +44,7 @@ def get_token():
 # ---------------------------------------------------------------------------
 
 # Return all event types available on Betfair (e.g. Soccer, Tennis).
-def list_event_types():
+def list_event_types() -> list[dict]:
     body = {
         "jsonrpc": "2.0",
         "method": "SportsAPING/v1.0/listEventTypes",
@@ -56,7 +56,7 @@ def list_event_types():
 
 # Fetch upcoming Match Odds markets from Betfair starting from the match date.
 # Returns a list of market dicts, each containing runners and event info.
-def list_market_catalogue(match):
+def list_market_catalogue(match: dict) -> list[dict]:
     match_time = parse_betfair_time(match["startTime"])
     from_time = match_time.replace(hour=0, minute=0, second=0).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -80,7 +80,7 @@ def list_market_catalogue(match):
 
 # Return the best available lay price for a given selection.
 # Returns None if no lay prices are currently available.
-def list_market_book(market_id, selection_id):
+def list_market_book(market_id: str, selection_id: int) -> float | None:
     body = {
         "jsonrpc": "2.0",
         "method": "SportsAPING/v1.0/listMarketBook",
@@ -102,7 +102,7 @@ def list_market_book(market_id, selection_id):
 
 
 # Make an authenticated POST request to the Betfair JSON-RPC API.
-def _post(body):
+def _post(body: dict) -> list:
     headers = {
         "X-Authentication": get_token(),
         "X-Application": APP_KEY,
@@ -122,18 +122,18 @@ def _post(body):
 # ---------------------------------------------------------------------------
 
 # Normalise a team name for fuzzy comparison (lowercase, strip FC etc.).
-def normalise(name):
+def normalise(name: str) -> str:
     return name.lower().replace("fc", "").replace(".", "").strip()
 
 
 # Parse a Betfair ISO timestamp (with or without Z suffix) into a datetime.
-def parse_betfair_time(time_str):
+def parse_betfair_time(time_str: str) -> datetime:
     return datetime.fromisoformat(time_str.replace("Z", "+00:00"))
 
 
 # Build a match dict from a UTC kickoff time.
 # Stub: home/away are hardcoded until hooked up to a real data source.
-def get_match(utc_time):
+def get_match(utc_time: datetime) -> dict:
     utc_time = utc_time.replace(tzinfo=ZoneInfo("UTC"))
     return {
         "home": "West Ham",
@@ -145,7 +145,7 @@ def get_match(utc_time):
 # Find the Betfair market matching the given home/away teams.
 # Checks runner names only — time is not used for matching.
 # Returns the market dict if found, otherwise None.
-def find_market(match, catalogue):
+def find_market(match: dict, catalogue: list[dict]) -> dict | None:
     home = normalise(match["home"])
     away = normalise(match["away"])
 
@@ -158,40 +158,8 @@ def find_market(match, catalogue):
 
 
 # Return the Betfair selection ID for a given team within a market.
-def get_selection_id(market, team):
+def get_selection_id(market: dict, team: str) -> int | None:
     for runner in market["runners"]:
         if normalise(runner["runnerName"]) == normalise(team):
             return runner["selectionId"]
     return None
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    kickoff_utc = datetime(year=2026, month=4, day=10, hour=20, minute=0)
-    match = get_match(kickoff_utc)
-    catalogue = list_market_catalogue(match)
-    market = find_market(match, catalogue)
-
-    if not market:
-        print("No matching market found for this match :(")
-        exit()
-
-    team_to_lay = match["home"]
-    selection_id = get_selection_id(market, team_to_lay)
-
-    if not selection_id:
-        print(f"Could not find {team_to_lay} in Betfair :(")
-        exit()
-
-    print(f"Safe to lay {team_to_lay}!")
-    print(f"Market ID:    {market['marketId']}")
-    print(f"Selection ID: {selection_id}")
-
-    best_lay_price = list_market_book(market["marketId"], selection_id)
-    if best_lay_price:
-        print(f"Best lay price: {best_lay_price}")
-    else:
-        print("No prices available for this match yet :(")

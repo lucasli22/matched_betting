@@ -1,58 +1,66 @@
-from playwright.sync_api import sync_playwright, Playwright
+from playwright.sync_api import sync_playwright, Playwright, Page
 from rich import print
 
-def normalise(name):
+SPORTSBET_SOCCER_URL = "https://www.sportsbet.com.au/betting/soccer"
+
+# Selector for each match card on the soccer page.
+EVENT_CARD_SELECTOR = 'div[data-automation-id$="-competition-event-card"]'
+
+# Selectors for team names and odds within a card.
+NAME_SELECTOR = '[data-automation-id$="-three-outcome-captioned-label"]'
+ODDS_SELECTOR = '[data-automation-id$="-three-outcome-captioned-text"]'
+
+
+# Normalise a team name for fuzzy comparison (lowercase, strip FC etc.).
+def normalise(name: str) -> str:
     return name.lower().replace("fc", "").replace(".", "").strip()
 
-def run(playwright):
-    start_url = "https://www.sportsbet.com.au/betting/soccer"
-    team = "Newcastle"
-    away = "Barcelona"
+
+# ---------------------------------------------------------------------------
+# Scraping
+# ---------------------------------------------------------------------------
+
+# Scrape the Sportsbet soccer page and return the back odds for the home team.
+# Returns the odds as a string, or None if the match isn't found.
+def run(playwright: Playwright, home: str, away: str) -> str | None:
     chrome = playwright.chromium
     browser = chrome.launch(headless=False)
     page = browser.new_page()
-    page.goto(start_url)
 
-    # Wait for the specific container or elements to load to avoid scraping an empty page
-    page.wait_for_selector('div[data-automation-id$="-competition-event-card"]')
+    page.goto(SPORTSBET_SOCCER_URL)
+    page.wait_for_selector(EVENT_CARD_SELECTOR)
 
-    # Locate all event cards. The $= means "ends with"
-    event_cards = page.locator('div[data-automation-id$="-competition-event-card"]')
-    
-    # Get the count to iterate over them safely
+    event_cards = page.locator(EVENT_CARD_SELECTOR)
     count = event_cards.count()
     print(f"Found {count} events.")
 
     for i in range(count):
         card = event_cards.nth(i)
-        # Find the <a> tag within this specific card to get the link
-        link_element = card.locator('a').first
-        
-        if link_element.count() > 0:
-            href = link_element.get_attribute('href')
-        else:
-            href = "N/A"
-        # print(f"Match Link: {href}")
-        names = card.locator('[data-automation-id$="-three-outcome-captioned-label"]')
-        odds = card.locator('[data-automation-id$="-three-outcome-captioned-text"]')
+
+        names = card.locator(NAME_SELECTOR)
+        odds  = card.locator(ODDS_SELECTOR)
+
         if names.count() == 0 or odds.count() == 0:
             continue
-        name_count = names.count()
-        game = {}
-        for j in range(name_count):
-            name = names.nth(j).inner_text()
-            if j < odds.count():
-                price = odds.nth(j).inner_text()
-            else:
-                price = "N/A"
+
+        # Build a dict of { normalised_team_name: odds } for this card.
+        game: dict[str, str] = {}
+        for j in range(names.count()):
+            name  = names.nth(j).inner_text()
+            price = odds.nth(j).inner_text() if j < odds.count() else "N/A"
             game[normalise(name)] = price
-            
-        if normalise(team) in game and normalise(away) in game:
-            for x, y in game.items():
-                print(f"Name: {x}\nPrice: {y}\n")
-        else:
-            game.clear()
+
+        if normalise(home) in game and normalise(away) in game:
+            return game[normalise(home)]
+
+    return None
 
 
-with sync_playwright() as playwright:
-    run(playwright)
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+# Launch a browser, scrape Sportsbet, and return the back odds for the home team.
+def get_back_odds(home: str, away: str) -> str | None:
+    with sync_playwright() as playwright:
+        return run(playwright, home, away)
