@@ -9,7 +9,7 @@ def run(playwright):
     team = "Newcastle"
     away = "Barcelona"
     chrome = playwright.chromium
-    browser = chrome.launch()
+    browser = chrome.launch(headless=False)
     page = browser.new_page()
     page.goto(start_url)
 
