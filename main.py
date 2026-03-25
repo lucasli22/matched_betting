@@ -3,8 +3,15 @@ from calculator import calculate_lay_stake, calculate_liability, calculate_profi
 from cli import print_breakdown
 from playwright_client import get_back_odds
 from datetime import datetime
-import argparse
 
+def prompt_kickoff() -> datetime:
+    print("\nKickoff time:")
+    year  = int(input("  Year  : ").strip())
+    month = int(input("  Month : ").strip())
+    day   = int(input("  Day   : ").strip())
+    hour  = int(input("  Hour  : ").strip())
+    minute = int(input("  Minute: ").strip())
+    return datetime(year=year, month=month, day=day, hour=hour, minute=minute)
 
 # ---------------------------------------------------------------------------
 # Main
@@ -17,12 +24,11 @@ if __name__ == "__main__":
     # Prompt user for match details
     home = input("Home team: ").strip()
     away = input("Away team: ").strip()
-    kickoff = input("Kickoff time UTC (YYYY-MM-DD HH:MM): ").strip()
+    kickoff_utc = prompt_kickoff()
     back_stake = float(input("Back stake ($): ").strip())
     bet_type = input("Bet type (qualifying / snr / sr): ").strip()
-
-    kickoff_utc = datetime.strptime(kickoff, "%Y-%m-%d %H:%M")
-
+    
+   
     print("\nFetching odds...")
 
     # Get lay odds from Betfair
