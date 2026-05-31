@@ -1,6 +1,6 @@
 # Matched Betting Calculator
 
-A CLI tool that automates the core workflow of matched betting on soccer matches. It fetches live lay odds from Betfair and back odds from Sportsbet, then calculates the optimal lay stake and expected profit for both outcomes.
+A CLI tool that automates the core workflow of matched betting on different sports. It fetches live lay odds from Betfair and back odds from Sportsbet, then calculates the optimal lay stake and expected profit for both outcomes.
 
 ## How it works
 
